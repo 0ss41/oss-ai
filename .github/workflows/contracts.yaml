@@ -1,0 +1,111 @@
+---
+name: Contracts Workflow
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/contracts.yml'
+      - 'contracts/**'
+  push:
+    tags:
+      - 'contracts-v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  list:
+    name: List Contracts
+    runs-on: ubuntu-latest
+    outputs:
+      contracts: ${{ steps.list.outputs.list }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            contracts
+      - name: List contracts
+        run: echo "$(ls contracts | jq -R -s -c 'split("\n") | map(select(length > 0))')"
+      - name: Configure GITHUB_OUTPUT
+        id: list
+        run: echo "list=$(ls contracts | jq -R -s -c 'split("\n") | map(select(length > 0))')" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build Contracts
+    needs: list
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        contract: ${{ fromJSON(needs.list.outputs.contracts) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            contracts/${{ matrix.contract }}
+
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: wasm32-unknown-unknown
+
+      - name: Format Checks
+        working-directory: contracts/${{ matrix.contract }}
+        run: |
+          cargo fmt --all -- --check
+
+      - name: Linter Checks
+        working-directory: contracts/${{ matrix.contract }}
+        run: |
+          cargo clippy -- -D warnings
+
+      - name: Compile Contract Schemas
+        working-directory: contracts/${{ matrix.contract }}
+        run: |
+          cargo schema --locked
+
+      - name: Compile WASM
+        working-directory: contracts/${{ matrix.contract }}
+        run: |
+          RUSTFLAGS="-C link-arg=-s" cargo wasm --locked
+
+      - name: Optimize WASM
+        uses: addnab/docker-run-action@v3
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+            image: cosmwasm/rust-optimizer:0.16.1
+            options: -v ${{ github.workspace }}/contracts/${{ matrix.contract }}:/code
+            run: |
+              /usr/local/bin/optimize.sh /code
+
+      - name: Upload WASM Artifact & Schemas
+        uses: actions/upload-artifact@v4
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          name: ${{ matrix.contract }}
+          path: |
+            ${{ github.workspace }}/contracts/${{ matrix.contract }}/artifacts/*.wasm
+            ${{ github.workspace }}/contracts/${{ matrix.contract }}/schema/*.json
+
+  release:
+    name: Release Contract
+    runs-on: ubuntu-latest
+    needs:
+      - build
+      - list
+    if: startsWith(github.ref, 'refs/tags/')
+    strategy:
+      matrix:
+        contract: ${{ fromJSON(needs.list.outputs.contracts) }}
+    permissions:
+      contents: write
+    steps:
+      - name: Download WASM Artifact & Schemas
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.contract }}
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifact/artifacts/*.wasm
+            artifact/schemas/*.json
