@@ -1,0 +1,25 @@
+{
+    "name": "@repo/adapter-postgres",
+    "type": "module",
+    "version": "0.0.0",
+    "private": true,
+    "license": "MIT",
+    "scripts": {
+        "check-types": "tsc --noEmit"
+    },
+    "devDependencies": {
+        "@repo/typescript-config": "workspace:*",
+        "@types/node": "^22",
+        "@types/pg": "8.11.10",
+        "ts-node": "^10.9.2",
+        "typescript": "5.7.3"
+    },
+    "dependencies": {
+        "@elizaos/core": "0.25.6-alpha.1",
+        "pg": "8.13.1",
+        "uuid": "^11.0.5"
+    },
+    "exports": {
+        ".": "./src/index.ts"
+    }
+}
