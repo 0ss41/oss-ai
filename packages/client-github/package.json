@@ -9,14 +9,20 @@
     },
     "devDependencies": {
         "@repo/typescript-config": "workspace:*",
+        "@types/cors": "^2.8.17",
+        "@types/express": "^5.0.0",
         "@types/node": "^22",
         "ts-node": "^10.9.2",
         "typescript": "5.7.3"
     },
     "dependencies": {
         "@elizaos/core": "0.25.6-alpha.1",
-        "@octokit/app": "^15.1.3",
-        "@octokit/webhooks": "^13.6.0",
+        "@octokit/app": "^15.1.4",
+        "@octokit/core": "^6.1.4",
+        "@octokit/webhooks": "^13.6.1",
+        "@octokit/webhooks-types": "^7.6.1",
+        "cors": "^2.8.5",
+        "express": "^4.21.2",
         "zod": "^3.24.2"
     },
     "exports": {

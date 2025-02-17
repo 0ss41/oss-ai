@@ -131,3 +131,4 @@ dist
 
 .turbo
 .env
+.private-key.pem

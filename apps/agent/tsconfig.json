@@ -1,7 +1,6 @@
 {
     "extends": "@repo/typescript-config/tsconfig.base.json",
     "compilerOptions": {
-        "outDir": "dist",
         "rootDir": ".",
         "module": "ESNext",
         "moduleResolution": "Bundler",
