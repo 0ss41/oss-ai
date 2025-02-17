@@ -6,6 +6,10 @@
 $ pnpm install
 ```
 
+## Configuration
+
+Copy and rename the `.env.example` to `.env` file. Set the required variables.
+
 ## Development
 
 Install pre-commit hook:
@@ -14,10 +18,17 @@ Install pre-commit hook:
 $ pnpm lefthook install
 ```
 
-Start the environment:
+
+Install [ollama](https://ollama.com/) to run your model locally. Start the environment:
 
 ```shell 
 $ docker compose up -d
+```
+
+To recive the Webhooks from Github use [smee.io](https://smee.io):
+
+```shell 
+$ pnpm smee --url [WEBHOOK_URL] --target http://127.0.0.1:3000/api/github/webhooks
 ```
 
 Run the iAgent:
