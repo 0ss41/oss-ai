@@ -1,26 +1,25 @@
 import fs from 'node:fs';
 import {
-    type AgentRuntime,
     type Client,
     type Content,
     type IAgentRuntime,
     type Memory,
     ModelClass,
-    State,
     composeContext,
     elizaLogger,
     generateMessageResponse,
-    generateText,
     getEmbeddingZeroVector,
-    messageCompletionFooter,
     stringToUuid,
 } from '@elizaos/core';
 import { App } from '@octokit/app';
 import type { Octokit } from '@octokit/core';
 import { createNodeMiddleware } from '@octokit/webhooks';
-import type { IssuesOpenedEvent } from '@octokit/webhooks-types';
-import cors from 'cors';
-import express from 'express';
+import type {
+    DiscussionCreatedEvent,
+    InstallationLite,
+    IssuesOpenedEvent,
+} from '@octokit/webhooks-types';
+import { DiscussionsClient, IssuesClient, ReposClient } from './clients';
 import { type AppSettings, loadSettings } from './settings';
 
 // TODO: use {{knowledge}} template when fixed
@@ -63,7 +62,12 @@ Note that {{agentName}} is capable of reading/seeing/hearing various forms of me
 
 export class GitHubClient {
     private readonly app: App;
+
     private readonly clients: Map<number, { octokit: Octokit; expiration: number }>;
+
+    issues: IssuesClient;
+    repos: ReposClient;
+    discussions: DiscussionsClient;
 
     constructor(
         private readonly agent: IAgentRuntime,
@@ -81,7 +85,12 @@ export class GitHubClient {
 
         this.clients = new Map();
 
+        this.repos = new ReposClient(this);
+        this.issues = new IssuesClient(this);
+        this.discussions = new DiscussionsClient(this);
+
         this.app.webhooks.on('issues.opened', this.handleOpenIssue.bind(this));
+        this.app.webhooks.on('discussion.created', this.handleOpenDiscussion.bind(this));
 
         this.app.webhooks.onError((error) => {
             elizaLogger.error('Error processing the Github Webhook:', error);
@@ -108,7 +117,7 @@ export class GitHubClient {
         return client;
     }
 
-    private async getOctokitClient(id: number) {
+    public async getOctokitClient(id: number) {
         let client = this.clients.get(id);
 
         if (!client) {
@@ -122,24 +131,37 @@ export class GitHubClient {
         return client.octokit;
     }
 
+    private async handleOpenDiscussion({ payload }: { payload: object }) {
+        const discussion = (payload as DiscussionCreatedEvent).discussion;
+
+        const installation = getInstallation(payload);
+
+        const body = `
+        ## Summary
+
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean magna nunc, condimentum a purus eu, congue fringilla libero. Aenean sagittis justo at egestas rutrum. Pellentesque non elit suscipit, auctor justo ac, mollis lorem. Maecenas tempor consectetur efficitur. In hac habitasse platea dictumst. Vestibulum imperdiet ultricies dolor, at consectetur dui faucibus nec. Fusce et suscipit ante, quis dapibus ligula. Sed faucibus nibh sit amet sem iaculis feugiat. Proin mollis quam eget velit suscipit, sit amet ultricies ligula imperdiet. Donec sed ante ac ligula rutrum interdum sit amet quis nibh. Sed et augue aliquet, blandit mi ut, congue tellus. Donec metus libero, suscipit quis finibus nec, convallis at nibh. Ut magna nunc, sagittis at dolor a, tincidunt commodo nulla. 
+
+        ## Vote
+
+        | Fetaure        | Description         | Vote                                  | Votes                                 |
+        | ----------------- | ----------------------- | --------------------------------- |  --------------------------------- |
+        | Create User | Add POST /user endpoint | [Click here](http://localhost:3000/sign-vote) |  #################### (20) |
+        | Delete User | Add DELETE /user endpoint | [Click here](http://localhost:3000/sign-vote) |  ########################## (30) |
+        `;
+
+        await this.discussions.updateBody(installation.id, discussion.node_id, body);
+    }
+
     private async handleOpenIssue({ payload }: { payload: object }) {
         const issue = (payload as IssuesOpenedEvent).issue;
         const repository = (payload as IssuesOpenedEvent).repository;
-        const installation = (payload as IssuesOpenedEvent).installation;
+
+        const installation = getInstallation(payload);
 
         const owner = repository.owner.login;
         const repo = repository.name;
 
-        if (!installation) {
-            throw new Error('Missing repository GithubApp installation');
-        }
-
-        const octokit = await this.getOctokitClient(installation.id);
-
-        const res = await octokit.request('GET /repos/{owner}/{repo}/labels', {
-            owner,
-            repo,
-        });
+        const res = await this.repos.getLabels(installation.id, owner, repo);
 
         const labels = res.data.reduce(
             (content, label) =>
@@ -216,14 +238,9 @@ export class GitHubClient {
 
         await this.agent.evaluate(memory, state);
 
-        elizaLogger.info(response.priority);
+        const issueLabels = [response.priority as string, response.type as string];
 
-        await octokit.request('POST /repos/{owner}/{repo}/issues/{issue_number}/labels', {
-            owner,
-            repo,
-            issue_number: issue.number,
-            labels: [response.priority as string, response.type as string],
-        });
+        this.issues.addLabels(installation.id, owner, repo, issue.number, issueLabels);
     }
 
     public createMiddleware() {
@@ -241,17 +258,6 @@ export const GitHubClientInteface: Client = {
 
         await client.retriveInstallations();
 
-        const app = express();
-
-        app.use(cors());
-
-        //@ts-ignore
-        app.use(client.createMiddleware());
-
-        app.listen(3000, () => {
-            elizaLogger.info('Github Client up & running');
-        });
-
         return client;
     },
 
@@ -259,3 +265,11 @@ export const GitHubClientInteface: Client = {
         elizaLogger.info('GitHub Client stop');
     },
 };
+
+function getInstallation(payload: { installation?: InstallationLite }) {
+    if (!payload.installation) {
+        throw new Error('Missing repository GithubApp installation');
+    }
+
+    return payload.installation;
+}

@@ -2,9 +2,7 @@
     "extends": "@repo/typescript-config/tsconfig.base.json",
     "compilerOptions": {
         "rootDir": ".",
-        "module": "ESNext",
-        "moduleResolution": "Bundler",
-        "types": ["node"]
+        "moduleResolution": "Bundler"
     },
     "ts-node": {
         "experimentalSpecifierResolution": "node",

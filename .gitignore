@@ -129,6 +129,15 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
+# turbo
 .turbo
+
+# environment
 .env
 .private-key.pem
+
+# astro
+.astro/
+
+# build
+dist/

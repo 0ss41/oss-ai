@@ -7,7 +7,12 @@
     },
     "files": {
         "ignoreUnknown": false,
-        "ignore": ["packages/typescript-config/tsconfig.base.json", "node_modules", ".turbo"]
+        "ignore": [
+            "packages/typescript-config/tsconfig.base.json",
+            "node_modules",
+            ".turbo",
+            ".astro"
+        ]
     },
     "formatter": {
         "enabled": true,
@@ -21,7 +26,11 @@
     "linter": {
         "enabled": true,
         "rules": {
-            "recommended": true
+            "recommended": true,
+
+            "correctness": {
+                "noUnusedImports": "error"
+            }
         }
     },
     "javascript": {

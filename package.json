@@ -12,12 +12,26 @@
     "devDependencies": {
         "@biomejs/biome": "1.9.4",
         "lefthook": "^1.10.10",
-        "smee-client": "^2.0.4",
+        "smee-client": "^3.0.0",
         "turbo": "^2.4.1",
         "typescript": "5.7.3"
     },
-    "packageManager": "pnpm@10.2.0",
+    "packageManager": "pnpm@10.4.1",
     "engines": {
         "node": ">=22"
+    },
+    "pnpm": {
+        "onlyBuiltDependencies": [
+            "@biomejs/biome",
+            "@parcel/watcher",
+            "@swc/core",
+            "better-sqlite3",
+            "bigint-buffer",
+            "bufferutil",
+            "esbuild",
+            "lefthook",
+            "sharp",
+            "utf-8-validate"
+        ]
     }
 }
