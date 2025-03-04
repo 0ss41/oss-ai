@@ -19,13 +19,12 @@ const createAgent = async (
     character: Character,
     db: IDatabaseAdapter,
     cache: ICacheManager,
-    token: string,
 ): Promise<AgentRuntime> => {
     elizaLogger.log(`Creating runtime for character ${character.name}`);
 
     return new AgentRuntime({
         databaseAdapter: db,
-        token,
+        token: '',
         modelProvider: character.modelProvider,
         evaluators: [],
         character,
@@ -68,13 +67,8 @@ const initializeDatabase = async (
     return [db, cache];
 };
 
-const startRuntime = async (
-    db: Postgres,
-    cache: CacheManager,
-    token: string,
-    character: Character,
-) => {
-    const runtime: AgentRuntime = await createAgent(character, db, cache, token);
+const startRuntime = async (db: Postgres, cache: CacheManager, character: Character) => {
+    const runtime: AgentRuntime = await createAgent(character, db, cache);
 
     await runtime.initialize();
 
@@ -84,7 +78,7 @@ const startRuntime = async (
 const startAgent = async (settings: AgentSettings, character: Character) => {
     const [db, cache] = await initializeDatabase(settings.POSTGRES_URL, character);
 
-    return startRuntime(db, cache, settings.OPENAI_TOKEN, character).catch((error) => {
+    return startRuntime(db, cache, character).catch((error) => {
         db.close();
         throw error;
     });

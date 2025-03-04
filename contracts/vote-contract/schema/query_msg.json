@@ -4,9 +4,9 @@
     "oneOf": [
         {
             "type": "object",
-            "required": ["get_count"],
+            "required": ["get_votes"],
             "properties": {
-                "get_count": {
+                "get_votes": {
                     "type": "object",
                     "additionalProperties": false
                 }

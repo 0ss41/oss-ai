@@ -3,7 +3,6 @@ import { z } from 'zod';
 
 export const settingsSchema = z.object({
     POSTGRES_URL: z.string().min(1, 'Postgres URL is required'),
-    OPENAI_TOKEN: z.string().min(1, 'OpenAI Token is required'),
 });
 
 export type AgentSettings = z.infer<typeof settingsSchema>;
@@ -11,7 +10,6 @@ export type AgentSettings = z.infer<typeof settingsSchema>;
 export async function loadSettings(): Promise<AgentSettings> {
     const config = {
         POSTGRES_URL: settings.POSTGRES_URL,
-        OPENAI_TOKEN: settings.OPENAI_TOKEN,
     };
 
     return settingsSchema.parseAsync(config).catch(handleError);

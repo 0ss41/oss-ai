@@ -45,11 +45,10 @@
 
 <script>
 	import {
-		ChainGrpcWasmApi,
 		getInjectiveAddress,
 		MsgExecuteContractCompat,
 	} from "@injectivelabs/sdk-ts";
-	import { Network, getNetworkEndpoints } from "@injectivelabs/networks";
+	import { Network } from "@injectivelabs/networks";
 	import { WalletStrategy } from "@injectivelabs/wallet-ts";
 	import { MsgBroadcaster, Wallet } from "@injectivelabs/wallet-ts";
 	import { ChainId, EthereumChainId } from "@injectivelabs/ts-types";
@@ -61,55 +60,47 @@
 	async function openMetamask(event: MouseEvent) {
 		event.preventDefault();
 
-		const NETWORK = Network.Testnet;
-		const ENDPOINTS = getNetworkEndpoints(NETWORK);
+		const regex = /[?&]address=([^&]+)&candidate=([^&]+)/;
+		const match = window.location.search.match(regex);
 
-		const chainGrpcWasmApi = new ChainGrpcWasmApi(ENDPOINTS.grpc);
+		if (match) {
+			const contractAddress = match[1];
+			const candidate = match[2];
 
-		const walletStrategy = new WalletStrategy({
-			chainId: ChainId.Testnet,
-			ethereumOptions: {
-				ethereumChainId: EthereumChainId.Mainnet,
-			},
-		})
+			const walletStrategy = new WalletStrategy({
+				chainId: ChainId.Testnet,
+				ethereumOptions: {
+					ethereumChainId: EthereumChainId.Mainnet,
+				},
+			});
 
-		const contractAddress = import.meta.env.VOTE_CONTRACT_ADDRESS
+			const addresses = await walletStrategy.getAddresses();
 
-		const addresses = await walletStrategy.getAddresses();
+			const injAddress = getInjectiveAddress(addresses[0]);
 
-		const injAddress = getInjectiveAddress(addresses[0])
-		
-		const msg = MsgExecuteContractCompat.fromJSON({
-			contractAddress: "inj13jhentcaffyng2zk4delm4mmp8jmt46yqh3qdm",
-			sender: injAddress,
-			msg: {
-				increment: {},
-			},
-		});
+			const msg = MsgExecuteContractCompat.fromJSON({
+				contractAddress,
+				sender: injAddress,
+				msg: {
+					vote: {
+						candidate: candidate.replace(/%20/g, " "),
+					},
+				},
+			});
 
-		const msgBroadcastClient = new MsgBroadcaster({
-			walletStrategy,
-			network: NETWORK,
-		});
+			const msgBroadcastClient = new MsgBroadcaster({
+				walletStrategy,
+				network: Network.Testnet,
+			});
 
-		// Signing and broadcasting the message
+			const res = await msgBroadcastClient.broadcast({
+				msgs: msg,
+				injectiveAddress: injAddress,
+			});
 
-		await msgBroadcastClient.broadcast({
-			msgs: msg,
-			injectiveAddress: injAddress,
-		});
-
-		const decoder = new TextDecoder("utf-8");
-
-		const q = JSON.stringify({ get_count: {} });
-
-		const response = await chainGrpcWasmApi.fetchSmartContractState(
-			"inj13jhentcaffyng2zk4delm4mmp8jmt46yqh3qdm",
-			btoa(q),
-		);
-
-		const { count } = JSON.parse(decoder.decode(response.data));
-
-		console.log(count);
+			console.log(res);
+		} else {
+			console.error("Contract address and Candidate not found");
+		}
 	}
 </script>

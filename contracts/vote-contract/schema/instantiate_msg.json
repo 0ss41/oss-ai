@@ -2,11 +2,18 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "InstantiateMsg",
     "type": "object",
-    "required": ["count"],
+    "required": ["candidates", "deadline"],
     "properties": {
-        "count": {
+        "candidates": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "deadline": {
             "type": "integer",
-            "format": "int32"
+            "format": "uint128",
+            "minimum": 0.0
         }
     },
     "additionalProperties": false
